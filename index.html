@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Pedidos">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <title>Mis Pedidos</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <div id="app">
+    <!-- HEADER -->
+    <header id="header">
+      <h1>Mis Pedidos</h1>
+    </header>
+
+    <!-- SECTIONS -->
+    <main id="main-content">
+
+      <!-- INICIO -->
+      <section id="section-inicio" class="section active">
+        <div class="section-header">
+          <h2>Inicio</h2>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-number" id="dashboard-productos">0</div><div class="stat-label">Productos</div></div>
+          <div class="stat-card"><div class="stat-number" id="dashboard-proveedores">0</div><div class="stat-label">Proveedores</div></div>
+          <div class="stat-card"><div class="stat-number" id="dashboard-listas">0</div><div class="stat-label">Listas</div></div>
+          <div class="stat-card"><div class="stat-number" id="dashboard-pedidos">0</div><div class="stat-label">Pedidos</div></div>
+          <div class="stat-card stat-warning"><div class="stat-number" id="dashboard-pendientes">0</div><div class="stat-label">Pendientes</div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Pedidos Recientes</div>
+          <div id="dashboard-recent"></div>
+        </div>
+      </section>
+
+      <!-- PRODUCTOS -->
+      <section id="section-productos" class="section">
+        <div class="section-header">
+          <h2>Productos</h2>
+          <button class="btn btn-primary" id="btn-add-producto">+ Nuevo</button>
+        </div>
+        <div id="productos-list"></div>
+      </section>
+
+      <!-- PROVEEDORES -->
+      <section id="section-proveedores" class="section">
+        <div class="section-header">
+          <h2>Proveedores</h2>
+          <button class="btn btn-primary" id="btn-add-proveedor">+ Nuevo</button>
+        </div>
+        <div id="proveedores-list"></div>
+      </section>
+
+      <!-- LISTAS -->
+      <section id="section-listas" class="section">
+        <div class="section-header">
+          <h2>Listas de Compra</h2>
+          <button class="btn btn-primary" id="btn-add-lista">+ Nueva</button>
+        </div>
+        <div id="listas-list"></div>
+      </section>
+
+      <!-- PEDIDOS -->
+      <section id="section-pedidos" class="section">
+        <div class="section-header">
+          <h2>Pedidos</h2>
+          <button class="btn btn-primary" id="btn-add-pedido">+ Nuevo</button>
+        </div>
+        <div id="pedidos-list"></div>
+      </section>
+
+    </main>
+
+    <!-- BOTTOM NAV -->
+    <nav id="bottom-nav">
+      <button class="nav-item active" data-section="inicio">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">Inicio</span>
+      </button>
+      <button class="nav-item" data-section="productos">
+        <span class="nav-icon">📦</span>
+        <span class="nav-label">Productos</span>
+      </button>
+      <button class="nav-item" data-section="proveedores">
+        <span class="nav-icon">🏪</span>
+        <span class="nav-label">Proveedores</span>
+      </button>
+      <button class="nav-item" data-section="listas">
+        <span class="nav-icon">📋</span>
+        <span class="nav-label">Listas</span>
+      </button>
+      <button class="nav-item" data-section="pedidos">
+        <span class="nav-icon">📝</span>
+        <span class="nav-label">Pedidos</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast"></div>
+
+  <!-- MODAL: Producto -->
+  <div class="modal" id="modal-producto">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-producto-title">Nuevo Producto</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <form id="producto-form">
+        <input type="hidden" id="producto-id">
+        <div class="form-group">
+          <label>Nombre</label>
+          <input type="text" class="input" id="producto-nombre" required placeholder="Ej: Arroz">
+        </div>
+        <div class="form-group">
+          <label>Categoría</label>
+          <input type="text" class="input" id="producto-categoria" placeholder="Ej: Granos">
+        </div>
+        <div class="form-group">
+          <label>Unidad</label>
+          <select class="input" id="producto-unidad">
+            <option value="ud">ud (unidad)</option>
+            <option value="kg">kg</option>
+            <option value="g">g</option>
+            <option value="l">L</option>
+            <option value="ml">ml</option>
+            <option value="paq">paquete</option>
+            <option value="caja">caja</option>
+            <option value="bot">botella</option>
+          </select>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary modal-close-btn">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Proveedor -->
+  <div class="modal" id="modal-proveedor">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-proveedor-title">Nuevo Proveedor</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <form id="proveedor-form">
+        <input type="hidden" id="proveedor-id">
+        <div class="form-group">
+          <label>Nombre</label>
+          <input type="text" class="input" id="proveedor-nombre" required placeholder="Nombre del proveedor">
+        </div>
+        <div class="form-group">
+          <label>Teléfono (WhatsApp)</label>
+          <input type="text" class="input" id="proveedor-telefono" placeholder="Ej: 521234567890">
+        </div>
+        <div class="form-group">
+          <label>Notas</label>
+          <textarea class="input" id="proveedor-notas" rows="2" placeholder="Dirección, horario, etc."></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary modal-close-btn">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Lista -->
+  <div class="modal" id="modal-lista">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-lista-title">Nueva Lista de Compra</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <form id="lista-form">
+        <input type="hidden" id="lista-id">
+        <div class="form-group">
+          <label>Nombre de la lista</label>
+          <input type="text" class="input" id="lista-nombre" required placeholder="Ej: Compra semanal">
+        </div>
+        <div class="form-group">
+          <label>Productos</label>
+          <div id="lista-items-container"></div>
+          <button type="button" class="btn btn-secondary" id="btn-add-lista-item" style="margin-top:8px;width:100%">+ Añadir producto</button>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary modal-close-btn">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Guardar Lista</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Pedido -->
+  <div class="modal" id="modal-pedido">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-pedido-title">Nuevo Pedido</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <form id="pedido-form">
+        <input type="hidden" id="pedido-id">
+        <input type="hidden" id="pedido-lista-id">
+        <div class="form-group">
+          <label>Proveedor</label>
+          <select class="input" id="pedido-proveedor" required>
+            <option value="">Seleccionar...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Productos</label>
+          <div id="pedido-items-container"></div>
+          <button type="button" class="btn btn-secondary" id="btn-add-pedido-item" style="margin-top:8px;width:100%">+ Añadir producto</button>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary modal-close-btn">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Crear Pedido</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Entrega -->
+  <div class="modal" id="modal-entrega">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-entrega-title">Registrar Entrega</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <form id="entrega-form">
+        <input type="hidden" id="entrega-pedido-id">
+        <p style="color:#666;margin-bottom:12px">Indica la cantidad entregada de cada producto:</p>
+        <div id="entrega-items-container"></div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary modal-close-btn">Cancelar</button>
+          <button type="submit" class="btn btn-primary">Registrar Entrega</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="js/db.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
