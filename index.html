@@ -18,6 +18,7 @@
     <!-- HEADER -->
     <header id="header">
       <h1>Mis Pedidos</h1>
+      <button id="dark-toggle" class="header-btn" title="Modo oscuro">🌙</button>
     </header>
 
     <!-- SECTIONS -->
@@ -39,6 +40,11 @@
           <div class="card-title">Pedidos Recientes</div>
           <div id="dashboard-recent"></div>
         </div>
+        <div style="display:flex;gap:8px;margin-top:12px">
+          <button class="btn btn-secondary" id="btn-exportar" style="flex:1">📤 Exportar</button>
+          <button class="btn btn-secondary" id="btn-importar" style="flex:1">📥 Importar</button>
+        </div>
+        <input type="file" id="import-file" accept=".json" style="display:none">
       </section>
 
       <!-- PRODUCTOS -->
@@ -46,6 +52,9 @@
         <div class="section-header">
           <h2>Productos</h2>
           <button class="btn btn-primary" id="btn-add-producto">+ Nuevo</button>
+        </div>
+        <div class="search-bar">
+          <input type="text" class="input" id="search-productos" placeholder="🔍 Buscar producto...">
         </div>
         <div id="productos-list"></div>
       </section>
@@ -138,6 +147,10 @@
             <option value="bot">botella</option>
           </select>
         </div>
+        <div class="form-group">
+          <label>Precio (€)</label>
+          <input type="number" class="input" id="producto-precio" min="0" step="0.01" placeholder="0.00">
+        </div>
         <div class="form-actions">
           <button type="button" class="btn btn-secondary modal-close-btn">Cancelar</button>
           <button type="submit" class="btn btn-primary">Guardar</button>
@@ -188,7 +201,13 @@
         <input type="hidden" id="lista-id">
         <div class="form-group">
           <label>Nombre de la lista</label>
-          <input type="text" class="input" id="lista-nombre" required placeholder="Ej: Compra semanal">
+          <input type="text" class="input" id="lista-nombre" required placeholder="Ej: Mercadona">
+        </div>
+        <div class="form-group">
+          <label>Supermercado / Proveedor</label>
+          <select class="input" id="lista-proveedor">
+            <option value="">Sin proveedor asignado</option>
+          </select>
         </div>
         <div class="form-group">
           <label>Productos</label>
@@ -200,6 +219,25 @@
           <button type="submit" class="btn btn-primary">Guardar Lista</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL: Ver Lista (check/uncheck) -->
+  <div class="modal" id="modal-ver-lista">
+    <div class="modal-overlay"></div>
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="ver-lista-title">Lista</h3>
+        <button class="modal-close">&times;</button>
+      </div>
+      <div id="ver-lista-body">
+        <p id="ver-lista-proveedor" style="color:var(--gray-500);margin-bottom:12px"></p>
+        <div id="ver-lista-items"></div>
+        <div class="form-actions" style="margin-top:16px">
+          <button type="button" class="btn btn-secondary modal-close-btn">Cerrar</button>
+          <button type="button" class="btn btn-primary" id="btn-uncheck-all">Desmarcar todos</button>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -225,6 +263,10 @@
           <div id="pedido-items-container"></div>
           <button type="button" class="btn btn-secondary" id="btn-add-pedido-item" style="margin-top:8px;width:100%">+ Añadir producto</button>
         </div>
+        <div class="form-group" id="pedido-total-group" style="display:none">
+          <label>Total estimado</label>
+          <div id="pedido-total" style="font-size:22px;font-weight:700;color:var(--blue)">0.00 €</div>
+        </div>
         <div class="form-actions">
           <button type="button" class="btn btn-secondary modal-close-btn">Cancelar</button>
           <button type="submit" class="btn btn-primary">Crear Pedido</button>
@@ -243,7 +285,7 @@
       </div>
       <form id="entrega-form">
         <input type="hidden" id="entrega-pedido-id">
-        <p style="color:#666;margin-bottom:12px">Indica la cantidad entregada de cada producto:</p>
+        <p style="color:var(--gray-500);margin-bottom:12px">Indica la cantidad entregada de cada producto:</p>
         <div id="entrega-items-container"></div>
         <div class="form-actions">
           <button type="button" class="btn btn-secondary modal-close-btn">Cancelar</button>
