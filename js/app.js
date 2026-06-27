@@ -106,6 +106,65 @@
     e.target.value = '';
   });
 
+  // ---- ESCÁNER DE CÓDIGO DE BARRAS ----
+  let html5QrCode = null;
+
+  function startScanner(targetInput) {
+    if (typeof Html5Qrcode === 'undefined') { showToast('Escáner no disponible'); return; }
+    document.getElementById('modal-scanner').classList.add('open');
+    document.getElementById('scanner-status').textContent = 'Iniciando cámara...';
+    try {
+      html5QrCode = new Html5Qrcode("scanner-container");
+      html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 120 } }, (code) => {
+        html5QrCode.stop().catch(()=>{});
+        html5QrCode = null;
+        document.getElementById('modal-scanner').classList.remove('open');
+        onCodeScanned(code, targetInput);
+      }).catch(() => {
+        document.getElementById('scanner-status').textContent = 'Error al acceder a la cámara';
+      });
+    } catch (e) { showToast('Error al iniciar escáner'); }
+  }
+
+  async function onCodeScanned(code, targetInput) {
+    if (targetInput === 'form') {
+      document.getElementById('producto-codigo').value = code;
+      showToast('Código: ' + code);
+      return;
+    }
+    const productos = await DB.productos.getAll();
+    const existing = productos.find(p => p.codigo === code);
+    if (existing) {
+      showToast('Producto encontrado: ' + existing.nombre);
+      editProducto(existing.id);
+    } else {
+      if (confirm('Producto no encontrado. ¿Crear uno con código ' + code + '?')) {
+        document.getElementById('producto-codigo').value = code;
+        document.getElementById('btn-add-producto').click();
+      }
+    }
+  }
+
+  document.getElementById('btn-scan').addEventListener('click', () => startScanner('list'));
+  document.getElementById('btn-scan-form').addEventListener('click', () => {
+    if (document.getElementById('modal-producto').classList.contains('open')) {
+      closeAllModals();
+      setTimeout(() => startScanner('form'), 300);
+    } else {
+      startScanner('form');
+    }
+  });
+
+  // Cleanup scanner on modal close
+  document.querySelector('#modal-scanner .modal-overlay').addEventListener('click', () => {
+    if (html5QrCode) { html5QrCode.stop().catch(()=>{}); html5QrCode = null; }
+  });
+  document.querySelectorAll('#modal-scanner .modal-close, #modal-scanner .modal-close-btn').forEach(el => {
+    el.addEventListener('click', () => {
+      if (html5QrCode) { html5QrCode.stop().catch(()=>{}); html5QrCode = null; }
+    });
+  });
+
   // ---- BÚSQUEDA DE PRODUCTOS ----
   let searchTerm = '';
   document.getElementById('search-productos').addEventListener('input', (e) => {
@@ -134,6 +193,7 @@
           <div class="card-body">
             <div class="card-title">${escapeHtml(p.nombre)}</div>
             <div class="card-meta">${escapeHtml(p.categoria || 'Sin categoría')} · ${escapeHtml(p.unidad || 'ud')}</div>
+            ${p.codigo ? `<div class="card-code">📷 ${escapeHtml(p.codigo)}</div>` : ''}
             ${p.precio ? `<div class="card-price">${formatPrice(p.precio)}</div>` : ''}
           </div>
           <div class="card-actions">
@@ -156,6 +216,7 @@
     document.getElementById('producto-categoria').value = '';
     document.getElementById('producto-unidad').value = 'ud';
     document.getElementById('producto-precio').value = '';
+    document.getElementById('producto-codigo').value = '';
     document.getElementById('modal-producto').classList.add('open');
   });
 
@@ -166,7 +227,8 @@
       nombre: document.getElementById('producto-nombre').value.trim(),
       categoria: document.getElementById('producto-categoria').value.trim(),
       unidad: document.getElementById('producto-unidad').value.trim(),
-      precio: parseFloat(document.getElementById('producto-precio').value) || 0
+      precio: parseFloat(document.getElementById('producto-precio').value) || 0,
+      codigo: document.getElementById('producto-codigo').value.trim()
     };
     try {
       if (id) { data.id = Number(id); await DB.productos.put(data); showToast('Producto actualizado'); }
@@ -186,6 +248,7 @@
       document.getElementById('producto-categoria').value = p.categoria || '';
       document.getElementById('producto-unidad').value = p.unidad || 'ud';
       document.getElementById('producto-precio').value = p.precio || '';
+      document.getElementById('producto-codigo').value = p.codigo || '';
       document.getElementById('modal-producto').classList.add('open');
     } catch (e) { showToast('Error al cargar producto'); }
   }

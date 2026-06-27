@@ -193,6 +193,7 @@ html, body {
 .card-title { font-weight: 600; font-size: 15px; }
 .card-meta { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
 .card-price { font-size: 14px; font-weight: 600; color: var(--blue); margin-top: 2px; }
+.card-code { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
 .card-actions { display: flex; gap: 4px; flex-shrink: 0; }
 
 /* STATS */
