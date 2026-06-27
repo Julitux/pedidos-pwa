@@ -132,6 +132,36 @@
       showToast('Código: ' + code);
       return;
     }
+    if (targetInput === 'pedido') {
+      const productos = await DB.productos.getAll();
+      const prod = productos.find(p => p.codigo === code);
+      if (!prod) {
+        if (confirm('Producto no encontrado. ¿Crear uno con código ' + code + '?')) {
+          document.getElementById('producto-codigo').value = code;
+          document.getElementById('btn-add-producto').click();
+        }
+        return;
+      }
+      const row = document.createElement('div');
+      row.className = 'pedido-item-row';
+      row.innerHTML = `
+        <select class="input pedido-item-select" style="flex:1"><option value="">Seleccionar producto...</option></select>
+        <div class="pedido-item-cantidades">
+          <label>Pedido: <input type="number" class="input pedido-item-cant" value="1" min="0.1" step="0.1" style="width:65px"></label>
+        </div>
+        <button type="button" class="btn-icon remove-pedido-item" title="Quitar">❌</button>
+      `;
+      document.getElementById('pedido-items-container').appendChild(row);
+      await loadProductosSelect(row.querySelector('.pedido-item-select'), null);
+      row.querySelector('.pedido-item-select').value = prod.id;
+      row.querySelector('.pedido-item-select').addEventListener('change', calcPedidoTotal);
+      row.querySelector('.pedido-item-cant').addEventListener('input', calcPedidoTotal);
+      row.querySelector('.remove-pedido-item').addEventListener('click', () => { row.remove(); calcPedidoTotal(); });
+      document.getElementById('pedido-total-group').style.display = 'block';
+      calcPedidoTotal();
+      showToast('Añadido: ' + prod.nombre);
+      return;
+    }
     const productos = await DB.productos.getAll();
     const existing = productos.find(p => p.codigo === code);
     if (existing) {
@@ -154,6 +184,8 @@
       startScanner('form');
     }
   });
+
+  document.getElementById('btn-scan-pedido').addEventListener('click', () => startScanner('pedido'));
 
   // Cleanup scanner on modal close
   document.querySelector('#modal-scanner .modal-overlay').addEventListener('click', () => {

@@ -271,7 +271,10 @@
         <div class="form-group">
           <label>Productos</label>
           <div id="pedido-items-container"></div>
-          <button type="button" class="btn btn-secondary" id="btn-add-pedido-item" style="margin-top:8px;width:100%">+ Añadir producto</button>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <button type="button" class="btn btn-secondary" id="btn-add-pedido-item" style="flex:1">+ Añadir producto</button>
+            <button type="button" class="btn btn-secondary" id="btn-scan-pedido" title="Escanear y añadir">📷</button>
+          </div>
         </div>
         <div class="form-group" id="pedido-total-group" style="display:none">
           <label>Total estimado</label>
