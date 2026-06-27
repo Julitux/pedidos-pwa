@@ -115,13 +115,22 @@
     document.getElementById('scanner-status').textContent = 'Iniciando cámara...';
     try {
       html5QrCode = new Html5Qrcode("scanner-container");
-      html5QrCode.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 250, height: 120 } }, (code) => {
-        html5QrCode.stop().catch(()=>{});
-        html5QrCode = null;
-        document.getElementById('modal-scanner').classList.remove('open');
-        onCodeScanned(code, targetInput);
+      Html5Qrcode.getCameras().then(cameras => {
+        if (!cameras || cameras.length === 0) {
+          document.getElementById('scanner-status').textContent = 'No se detectó cámara';
+          return;
+        }
+        const backCam = cameras.find(c => c.label.toLowerCase().includes('back') || c.label.toLowerCase().includes('trasera')) || cameras[cameras.length - 1];
+        html5QrCode.start(backCam.id, { fps: 10, qrbox: { width: 250, height: 120 } }, (code) => {
+          html5QrCode.stop().catch(()=>{});
+          html5QrCode = null;
+          document.getElementById('modal-scanner').classList.remove('open');
+          onCodeScanned(code, targetInput);
+        }).catch(() => {
+          document.getElementById('scanner-status').textContent = 'Error al acceder a la cámara';
+        });
       }).catch(() => {
-        document.getElementById('scanner-status').textContent = 'Error al acceder a la cámara';
+        document.getElementById('scanner-status').textContent = 'Error al listar cámaras';
       });
     } catch (e) { showToast('Error al iniciar escáner'); }
   }
