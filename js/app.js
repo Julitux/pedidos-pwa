@@ -107,66 +107,76 @@
   });
 
   // ---- ESCÁNER DE CÓDIGO DE BARRAS ----
-  let html5QrCode = null;
-  let scannerVideoObserver = null;
+  let scannerStream = null;
+  let scannerActive = false;
+  let scanTimer = null;
 
   function startScanner(targetInput) {
-    if (typeof Html5Qrcode === 'undefined') { showToast('Escáner no disponible'); return; }
     const container = document.getElementById('scanner-container');
     container.innerHTML = '';
     document.getElementById('modal-scanner').classList.add('open');
     document.getElementById('scanner-status').textContent = 'Iniciando cámara...';
 
-    // Observar cuándo la biblioteca crea el video y añadir playsinline
-    scannerVideoObserver = new MutationObserver(() => {
-      const video = container.querySelector('video');
-      if (video && !video.hasAttribute('playsinline')) {
-        video.setAttribute('playsinline', '');
-        video.setAttribute('autoplay', '');
-        video.setAttribute('muted', '');
-        video.style.width = '100%';
-        video.style.height = '280px';
-        video.style.objectFit = 'cover';
-        video.style.borderRadius = '8px';
-        // Si el modal ya está abierto, intentar play()
-        try { video.play(); } catch(e) {}
-      }
-    });
-    scannerVideoObserver.observe(container, { childList: true, subtree: true });
-
-    html5QrCode = new Html5Qrcode("scanner-container");
     setTimeout(() => {
-      html5QrCode.start(
-        { facingMode: { exact: 'environment' } },
-        { fps: 10, qrbox: { width: 250, height: 120 } },
-        (code) => {
-          stopScanner();
-          document.getElementById('modal-scanner').classList.remove('open');
-          onCodeScanned(code, targetInput);
-        }
-      ).catch(() => {
-        // Fallback sin exact
-        html5QrCode.start(
-          { facingMode: 'environment' },
-          { fps: 10, qrbox: { width: 250, height: 120 } },
-          (code) => {
-            stopScanner();
-            document.getElementById('modal-scanner').classList.remove('open');
-            onCodeScanned(code, targetInput);
-          }
-        ).catch(() => {
-          document.getElementById('scanner-status').textContent = 'Error al acceder a la cámara';
-        });
-      });
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: 'environment' } } })
+        .catch(() => navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }))
+        .then(stream => {
+          scannerStream = stream;
+          const video = document.createElement('video');
+          video.setAttribute('playsinline', '');
+          video.setAttribute('autoplay', '');
+          video.setAttribute('muted', '');
+          video.srcObject = stream;
+          video.style.width = '100%';
+          video.style.height = '280px';
+          video.style.objectFit = 'cover';
+          video.style.borderRadius = '8px';
+          video.play();
+          container.appendChild(video);
+          document.getElementById('scanner-status').textContent = 'Enfoca al código de barras...';
+          scannerActive = true;
+          scanTimer = setInterval(() => {
+            if (!scannerActive) { clearInterval(scanTimer); return; }
+            if (video.readyState < 2) return;
+            if ('BarcodeDetector' in window) {
+              try {
+                const detector = new BarcodeDetector({ formats: ['ean_13','ean_8','code_128','code_39','code_93','codabar','itf','upc_a','upc_e','qr_code'] });
+                detector.detect(video).then(barcodes => {
+                  if (barcodes.length > 0) {
+                    scannerActive = false; clearInterval(scanTimer);
+                    stopScanner();
+                    document.getElementById('modal-scanner').classList.remove('open');
+                    onCodeScanned(barcodes[0].rawValue, targetInput);
+                  }
+                }).catch(() => {});
+              } catch(e) {}
+            } else {
+              try {
+                const canvas = document.createElement('canvas');
+                canvas.width = video.videoWidth || 640;
+                canvas.height = video.videoHeight || 480;
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                canvas.toBlob(blob => {
+                  if (!blob || !scannerActive) return;
+                  try {
+                    const qr = new Html5Qrcode('scanner-hidden');
+                    qr.scanFileV2(new File([blob], 's.jpg', { type: 'image/jpeg' }), true)
+                      .then(r => { if (r && r.decodedText) { scannerActive = false; clearInterval(scanTimer); stopScanner(); document.getElementById('modal-scanner').classList.remove('open'); onCodeScanned(r.decodedText, targetInput); } })
+                      .catch(() => {});
+                  } catch(e) {}
+                }, 'image/jpeg', 0.8);
+              } catch(e) {}
+            }
+          }, 500);
+        })
+        .catch(() => { document.getElementById('scanner-status').textContent = 'Error al acceder a la cámara'; });
     }, 500);
   }
 
   function stopScanner() {
-    if (scannerVideoObserver) { scannerVideoObserver.disconnect(); scannerVideoObserver = null; }
-    if (html5QrCode) {
-      try { html5QrCode.stop().catch(()=>{}); } catch(e) {}
-      html5QrCode = null;
-    }
+    if (scanTimer) { clearInterval(scanTimer); scanTimer = null; }
+    if (scannerStream) { scannerStream.getTracks().forEach(t => t.stop()); scannerStream = null; }
+    scannerActive = false;
     const container = document.getElementById('scanner-container');
     if (container) container.innerHTML = '';
   }
