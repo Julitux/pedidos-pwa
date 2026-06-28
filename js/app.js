@@ -107,91 +107,66 @@
   });
 
   // ---- ESCÁNER DE CÓDIGO DE BARRAS ----
-  let scannerStream = null;
-  let scannerActive = false;
+  let html5QrCode = null;
+  let scannerVideoObserver = null;
 
   function startScanner(targetInput) {
+    if (typeof Html5Qrcode === 'undefined') { showToast('Escáner no disponible'); return; }
+    const container = document.getElementById('scanner-container');
+    container.innerHTML = '';
     document.getElementById('modal-scanner').classList.add('open');
     document.getElementById('scanner-status').textContent = 'Iniciando cámara...';
-    setTimeout(startCamera, 400);
-    function startCamera() {
-      const container = document.getElementById('scanner-container');
-      const status = document.getElementById('scanner-status');
-      container.innerHTML = '';
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: 'environment' } } })
-        .catch(() => navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }))
-        .then(stream => {
-          scannerStream = stream;
-          const video = document.createElement('video');
-          video.setAttribute('playsinline', '');
-          video.setAttribute('autoplay', '');
-          video.srcObject = stream;
-          video.style.width = '100%';
-          video.style.height = '280px';
-          video.style.objectFit = 'cover';
-          video.style.borderRadius = '8px';
-          video.play();
-          container.appendChild(video);
-          status.textContent = 'Enfoca al código...';
-          scannerActive = true;
-          const canvas = document.createElement('canvas');
-          const ctx = canvas.getContext('2d');
-          let useNative = 'BarcodeDetector' in window;
-          let detector = null;
-          if (useNative) {
-            detector = new BarcodeDetector({ formats: ['ean_13','ean_8','code_128','code_39','code_93','codabar','itf','upc_a','upc_e','qr_code'] });
+
+    // Observar cuándo la biblioteca crea el video y añadir playsinline
+    scannerVideoObserver = new MutationObserver(() => {
+      const video = container.querySelector('video');
+      if (video && !video.hasAttribute('playsinline')) {
+        video.setAttribute('playsinline', '');
+        video.setAttribute('autoplay', '');
+        video.setAttribute('muted', '');
+        video.style.width = '100%';
+        video.style.height = '280px';
+        video.style.objectFit = 'cover';
+        video.style.borderRadius = '8px';
+        // Si el modal ya está abierto, intentar play()
+        try { video.play(); } catch(e) {}
+      }
+    });
+    scannerVideoObserver.observe(container, { childList: true, subtree: true });
+
+    html5QrCode = new Html5Qrcode("scanner-container");
+    setTimeout(() => {
+      html5QrCode.start(
+        { facingMode: { exact: 'environment' } },
+        { fps: 10, qrbox: { width: 250, height: 120 } },
+        (code) => {
+          stopScanner();
+          document.getElementById('modal-scanner').classList.remove('open');
+          onCodeScanned(code, targetInput);
+        }
+      ).catch(() => {
+        // Fallback sin exact
+        html5QrCode.start(
+          { facingMode: 'environment' },
+          { fps: 10, qrbox: { width: 250, height: 120 } },
+          (code) => {
+            stopScanner();
+            document.getElementById('modal-scanner').classList.remove('open');
+            onCodeScanned(code, targetInput);
           }
-          (function scanLoop() {
-            if (!scannerActive) return;
-            if (video.readyState < 2) { setTimeout(scanLoop, 500); return; }
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0);
-            if (useNative) {
-              detector.detect(canvas).then(barcodes => {
-                if (barcodes.length > 0) {
-                  scannerActive = false;
-                  stopScanner();
-                  document.getElementById('modal-scanner').classList.remove('open');
-                  onCodeScanned(barcodes[0].rawValue, targetInput);
-                } else {
-                  setTimeout(scanLoop, 300);
-                }
-              }).catch(() => setTimeout(scanLoop, 300));
-            } else {
-              (function scanLoopFallback() {
-                if (!scannerActive) return;
-                canvas.toBlob(blob => {
-                  if (!blob || !scannerActive) return;
-                  const file = new File([blob], 'scan.jpg', { type: 'image/jpeg' });
-                  try {
-                    const qr = new Html5Qrcode('scanner-hidden');
-                    qr.scanFileV2(file, true).then(result => {
-                      if (result && result.decodedText) {
-                        scannerActive = false;
-                        stopScanner();
-                        document.getElementById('modal-scanner').classList.remove('open');
-                        onCodeScanned(result.decodedText, targetInput);
-                      } else {
-                        setTimeout(scanLoopFallback, 300);
-                      }
-                    }).catch(() => setTimeout(scanLoopFallback, 300));
-                  } catch(e) { setTimeout(scanLoopFallback, 300); }
-                }, 'image/jpeg', 0.8);
-              })();
-            }
-          })();
-        })
-        .catch(() => { status.textContent = 'Error al acceder a la cámara'; });
-    }
+        ).catch(() => {
+          document.getElementById('scanner-status').textContent = 'Error al acceder a la cámara';
+        });
+      });
+    }, 500);
   }
 
   function stopScanner() {
-    if (scannerStream) {
-      scannerStream.getTracks().forEach(t => t.stop());
-      scannerStream = null;
+    if (scannerVideoObserver) { scannerVideoObserver.disconnect(); scannerVideoObserver = null; }
+    if (html5QrCode) {
+      try { html5QrCode.stop().catch(()=>{}); } catch(e) {}
+      html5QrCode = null;
     }
-    scannerActive = false;
     const container = document.getElementById('scanner-container');
     if (container) container.innerHTML = '';
   }
