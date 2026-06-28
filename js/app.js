@@ -110,32 +110,25 @@
   let scannerStream = null;
   let scannerActive = false;
   let scanTimer = null;
-  let scannerStatusEl = null;
-  let scanLastMode = '';
-
-  function setStatus(msg) {
-    if (!scannerStatusEl) scannerStatusEl = document.getElementById('scanner-status');
-    if (scannerStatusEl) scannerStatusEl.textContent = msg;
-  }
+  let scannerTarget = null;
 
   function finishScan(code) {
     scannerActive = false;
     clearInterval(scanTimer);
     stopScanner();
     document.getElementById('modal-scanner').classList.remove('open');
-    onCodeScanned(code, targetInput);
+    onCodeScanned(code, scannerTarget);
   }
-
-  let scannerTarget = null;
 
   function startScanner(targetInput) {
     scannerTarget = targetInput;
     const container = document.getElementById('scanner-container');
     container.innerHTML = '';
     document.getElementById('modal-scanner').classList.add('open');
-    setStatus('Iniciando cámara...');
+    document.getElementById('scanner-status').textContent = 'Iniciando cámara...';
 
-    // Crear UNA instancia para el fallback
+    let nativeFails = 0;
+    const MAX_NATIVE_FAILS = 5;
     let libDecoder = null;
     try { libDecoder = new Html5Qrcode('scanner-hidden'); } catch(e) {}
 
@@ -155,50 +148,61 @@
           video.style.borderRadius = '8px';
           video.play();
           container.appendChild(video);
-          setStatus('Enfoca al código...');
+          document.getElementById('scanner-status').textContent = 'Enfoca al código...';
           scannerActive = true;
 
-          let useNative = ('BarcodeDetector' in window);
-          let scanning = false; // evita solapamientos
+          let scanning = false;
+          const statusEl = document.getElementById('scanner-status');
 
           scanTimer = setInterval(() => {
             if (!scannerActive || video.readyState < 2 || scanning) return;
+            if (!video.videoWidth || !video.videoHeight) return;
             scanning = true;
 
-            if (useNative && 'BarcodeDetector' in window) {
+            // Estrategia 1: BarcodeDetector nativo
+            if (nativeFails < MAX_NATIVE_FAILS && 'BarcodeDetector' in window) {
               try {
                 const detector = new BarcodeDetector();
                 detector.detect(video).then(barcodes => {
                   scanning = false;
-                  if (barcodes.length > 0) finishScan(barcodes[0].rawValue);
+                  if (barcodes.length > 0) {
+                    finishScan(barcodes[0].rawValue);
+                  } else {
+                    nativeFails++;
+                    if (statusEl) statusEl.textContent = 'Buscando... (' + nativeFails + '/' + MAX_NATIVE_FAILS + ')';
+                  }
                 }).catch(() => {
                   scanning = false;
-                  useNative = false;
-                  setStatus('Cambiando a modo offline...');
+                  nativeFails = MAX_NATIVE_FAILS;
+                  if (statusEl) statusEl.textContent = 'Usando biblioteca offline...';
                 });
               } catch(e) {
                 scanning = false;
-                useNative = false;
-                setStatus('Cambiando a modo offline...');
+                nativeFails = MAX_NATIVE_FAILS;
+                if (statusEl) statusEl.textContent = 'Usando biblioteca offline...';
               }
-            } else if (libDecoder) {
+            }
+            // Estrategia 2: biblioteca html5-qrcode con captura de frame
+            else if (libDecoder) {
+              const w = video.videoWidth || 640;
+              const h = video.videoHeight || 480;
               const canvas = document.createElement('canvas');
-              canvas.width = video.videoWidth || 640;
-              canvas.height = video.videoHeight || 480;
+              canvas.width = w; canvas.height = h;
               canvas.getContext('2d').drawImage(video, 0, 0);
               canvas.toBlob(blob => {
                 scanning = false;
                 if (!blob || !scannerActive) return;
-                libDecoder.scanFileV2(new File([blob], 'scan.jpg', { type: 'image/jpeg' }), false)
-                  .then(r => { if (r && r.decodedText) finishScan(r.decodedText); })
-                  .catch(() => {});
+                libDecoder.scanFileV2(new File([blob], 's.jpg', { type: 'image/jpeg' }), false)
+                  .then(r => {
+                    if (r && r.decodedText) finishScan(r.decodedText);
+                  }).catch(() => {});
               }, 'image/jpeg', 0.95);
             } else {
               scanning = false;
             }
           }, 600);
         })
-        .catch(() => { setStatus('Error al acceder a la cámara'); });
+        .catch(() => { document.getElementById('scanner-status').textContent = 'Error al acceder a la cámara'; });
     }, 500);
   }
 
