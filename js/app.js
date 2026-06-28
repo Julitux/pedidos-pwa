@@ -107,32 +107,93 @@
   });
 
   // ---- ESCÁNER DE CÓDIGO DE BARRAS ----
-  let html5QrCode = null;
+  let scannerStream = null;
+  let scannerActive = false;
 
   function startScanner(targetInput) {
-    if (typeof Html5Qrcode === 'undefined') { showToast('Escáner no disponible'); return; }
     document.getElementById('modal-scanner').classList.add('open');
     document.getElementById('scanner-status').textContent = 'Iniciando cámara...';
-    try {
-      html5QrCode = new Html5Qrcode("scanner-container");
-      Html5Qrcode.getCameras().then(cameras => {
-        if (!cameras || cameras.length === 0) {
-          document.getElementById('scanner-status').textContent = 'No se detectó cámara';
-          return;
-        }
-        const backCam = cameras.find(c => c.label.toLowerCase().includes('back') || c.label.toLowerCase().includes('trasera')) || cameras[cameras.length - 1];
-        html5QrCode.start(backCam.id, { fps: 10, qrbox: { width: 250, height: 120 } }, (code) => {
-          html5QrCode.stop().catch(()=>{});
-          html5QrCode = null;
-          document.getElementById('modal-scanner').classList.remove('open');
-          onCodeScanned(code, targetInput);
-        }).catch(() => {
-          document.getElementById('scanner-status').textContent = 'Error al acceder a la cámara';
-        });
-      }).catch(() => {
-        document.getElementById('scanner-status').textContent = 'Error al listar cámaras';
-      });
-    } catch (e) { showToast('Error al iniciar escáner'); }
+    setTimeout(startCamera, 400);
+    function startCamera() {
+      const container = document.getElementById('scanner-container');
+      const status = document.getElementById('scanner-status');
+      container.innerHTML = '';
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: 'environment' } } })
+        .catch(() => navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }))
+        .then(stream => {
+          scannerStream = stream;
+          const video = document.createElement('video');
+          video.setAttribute('playsinline', '');
+          video.setAttribute('autoplay', '');
+          video.srcObject = stream;
+          video.style.width = '100%';
+          video.style.height = '280px';
+          video.style.objectFit = 'cover';
+          video.style.borderRadius = '8px';
+          video.play();
+          container.appendChild(video);
+          status.textContent = 'Enfoca al código...';
+          scannerActive = true;
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          let useNative = 'BarcodeDetector' in window;
+          let detector = null;
+          if (useNative) {
+            detector = new BarcodeDetector({ formats: ['ean_13','ean_8','code_128','code_39','code_93','codabar','itf','upc_a','upc_e','qr_code'] });
+          }
+          (function scanLoop() {
+            if (!scannerActive) return;
+            if (video.readyState < 2) { setTimeout(scanLoop, 500); return; }
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+            if (useNative) {
+              detector.detect(canvas).then(barcodes => {
+                if (barcodes.length > 0) {
+                  scannerActive = false;
+                  stopScanner();
+                  document.getElementById('modal-scanner').classList.remove('open');
+                  onCodeScanned(barcodes[0].rawValue, targetInput);
+                } else {
+                  setTimeout(scanLoop, 300);
+                }
+              }).catch(() => setTimeout(scanLoop, 300));
+            } else {
+              (function scanLoopFallback() {
+                if (!scannerActive) return;
+                canvas.toBlob(blob => {
+                  if (!blob || !scannerActive) return;
+                  const file = new File([blob], 'scan.jpg', { type: 'image/jpeg' });
+                  try {
+                    const qr = new Html5Qrcode('scanner-hidden');
+                    qr.scanFileV2(file, true).then(result => {
+                      if (result && result.decodedText) {
+                        scannerActive = false;
+                        stopScanner();
+                        document.getElementById('modal-scanner').classList.remove('open');
+                        onCodeScanned(result.decodedText, targetInput);
+                      } else {
+                        setTimeout(scanLoopFallback, 300);
+                      }
+                    }).catch(() => setTimeout(scanLoopFallback, 300));
+                  } catch(e) { setTimeout(scanLoopFallback, 300); }
+                }, 'image/jpeg', 0.8);
+              })();
+            }
+          })();
+        })
+        .catch(() => { status.textContent = 'Error al acceder a la cámara'; });
+    }
+  }
+
+  function stopScanner() {
+    if (scannerStream) {
+      scannerStream.getTracks().forEach(t => t.stop());
+      scannerStream = null;
+    }
+    scannerActive = false;
+    const container = document.getElementById('scanner-container');
+    if (container) container.innerHTML = '';
   }
 
   async function onCodeScanned(code, targetInput) {
@@ -197,13 +258,9 @@
   document.getElementById('btn-scan-pedido').addEventListener('click', () => startScanner('pedido'));
 
   // Cleanup scanner on modal close
-  document.querySelector('#modal-scanner .modal-overlay').addEventListener('click', () => {
-    if (html5QrCode) { html5QrCode.stop().catch(()=>{}); html5QrCode = null; }
-  });
+  document.querySelector('#modal-scanner .modal-overlay').addEventListener('click', stopScanner);
   document.querySelectorAll('#modal-scanner .modal-close, #modal-scanner .modal-close-btn').forEach(el => {
-    el.addEventListener('click', () => {
-      if (html5QrCode) { html5QrCode.stop().catch(()=>{}); html5QrCode = null; }
-    });
+    el.addEventListener('click', stopScanner);
   });
 
   // ---- BÚSQUEDA DE PRODUCTOS ----
