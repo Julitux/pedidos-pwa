@@ -76,6 +76,13 @@ const DB = {
         req.onsuccess = () => { db.close(); resolve(); };
         req.onerror = () => { db.close(); reject(req.error); };
       }));
+    },
+    clear() {
+      return tx('productos', 'readwrite').then(({ s, db }) => new Promise((resolve, reject) => {
+        const req = s.clear();
+        req.onsuccess = () => { db.close(); resolve(); };
+        req.onerror = () => { db.close(); reject(req.error); };
+      }));
     }
   },
   // Proveedores
@@ -113,6 +120,13 @@ const DB = {
     del(id) {
       return tx('proveedores', 'readwrite').then(({ s, db }) => new Promise((resolve, reject) => {
         const req = s.delete(id);
+        req.onsuccess = () => { db.close(); resolve(); };
+        req.onerror = () => { db.close(); reject(req.error); };
+      }));
+    },
+    clear() {
+      return tx('proveedores', 'readwrite').then(({ s, db }) => new Promise((resolve, reject) => {
+        const req = s.clear();
         req.onsuccess = () => { db.close(); resolve(); };
         req.onerror = () => { db.close(); reject(req.error); };
       }));
@@ -157,6 +171,13 @@ const DB = {
         req.onsuccess = () => { db.close(); resolve(); };
         req.onerror = () => { db.close(); reject(req.error); };
       }));
+    },
+    clear() {
+      return tx('listas', 'readwrite').then(({ s, db }) => new Promise((resolve, reject) => {
+        const req = s.clear();
+        req.onsuccess = () => { db.close(); resolve(); };
+        req.onerror = () => { db.close(); reject(req.error); };
+      }));
     }
   },
   // Pedidos
@@ -196,6 +217,13 @@ const DB = {
     del(id) {
       return tx('pedidos', 'readwrite').then(({ s, db }) => new Promise((resolve, reject) => {
         const req = s.delete(id);
+        req.onsuccess = () => { db.close(); resolve(); };
+        req.onerror = () => { db.close(); reject(req.error); };
+      }));
+    },
+    clear() {
+      return tx('pedidos', 'readwrite').then(({ s, db }) => new Promise((resolve, reject) => {
+        const req = s.clear();
         req.onsuccess = () => { db.close(); resolve(); };
         req.onerror = () => { db.close(); reject(req.error); };
       }));

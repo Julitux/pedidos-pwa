@@ -106,6 +106,16 @@
     e.target.value = '';
   });
 
+  document.getElementById('btn-limpiar').addEventListener('click', async () => {
+    if (!confirm('¿Borrar TODOS los datos? Esta acción no se puede deshacer.')) return;
+    if (!confirm('¿Estás seguro? Se eliminarán productos, proveedores, listas y pedidos.')) return;
+    try {
+      await Promise.all([DB.productos.clear(), DB.proveedores.clear(), DB.listas.clear(), DB.pedidos.clear()]);
+      showToast('Todos los datos eliminados');
+      renderDashboard(); renderProductos(); renderProveedores(); renderListas(); renderPedidos();
+    } catch (e) { showToast('Error al limpiar'); }
+  });
+
   // ---- BÚSQUEDA DE PRODUCTOS ----
   let searchTerm = '';
   document.getElementById('search-productos').addEventListener('input', (e) => {

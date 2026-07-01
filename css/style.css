@@ -165,6 +165,8 @@ html, body {
 .btn:active { transform: scale(0.97); }
 .btn-primary { background: var(--blue); color: white; }
 .btn-secondary { background: var(--gray-200); color: var(--gray-700); }
+.btn-danger { background: #e74c3c; color: white; }
+body.dark .btn-danger { background: #c0392b; color: white; }
 .btn-icon {
   background: none;
   border: none;
