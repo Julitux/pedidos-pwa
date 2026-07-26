@@ -129,6 +129,7 @@
     list.innerHTML = '<div class="loading">Cargando...</div>';
     try {
       let productos = await DB.productos.getAll();
+      productos.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' }));
       if (searchTerm) {
         productos = productos.filter(p =>
           p.nombre.toLowerCase().includes(searchTerm) ||
@@ -216,6 +217,7 @@
     list.innerHTML = '<div class="loading">Cargando...</div>';
     try {
       const proveedores = await DB.proveedores.getAll();
+      proveedores.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' }));
       if (proveedores.length === 0) {
         list.innerHTML = '<div class="empty-state">No hay proveedores aún.</div>';
         return;
@@ -282,6 +284,7 @@
   async function loadProveedoresSelect(select, selectedId) {
     try {
       const proveedores = await DB.proveedores.getAll();
+      proveedores.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' }));
       select.innerHTML = '<option value="">Sin proveedor</option>' +
         proveedores.map(p => `<option value="${p.id}" ${p.id === Number(selectedId) ? 'selected' : ''}>${escapeHtml(p.nombre)}</option>`).join('');
     } catch (e) { /* ignore */ }
@@ -290,6 +293,7 @@
   async function loadProductosSelect(select, selectedId) {
     try {
       const productos = await DB.productos.getAll();
+      productos.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' }));
       select.innerHTML = '<option value="">Seleccionar producto...</option>' +
         productos.map(p => `<option value="${p.id}" ${p.id === Number(selectedId) ? 'selected' : ''}>${escapeHtml(p.nombre)} (${escapeHtml(p.unidad || 'ud')})${p.precio ? ' · ' + formatPrice(p.precio) : ''}</option>`).join('');
     } catch (e) { /* ignore */ }
@@ -306,6 +310,7 @@
     list.innerHTML = '<div class="loading">Cargando...</div>';
     try {
       const [listas, proveedores] = await Promise.all([DB.listas.getAll(), DB.proveedores.getAll()]);
+      listas.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' }));
       const provMap = {};
       proveedores.forEach(p => { provMap[p.id] = p.nombre; });
       if (listas.length === 0) {
@@ -395,6 +400,7 @@
       } else if (prodSelect.value) { valid = false; }
     });
     if (!valid) { showToast('Revisa las cantidades'); return; }
+    items.sort((a, b) => (a.productoNombre || '').localeCompare(b.productoNombre || '', 'es', { sensitivity: 'base' }));
     const data = { nombre: document.getElementById('lista-nombre').value.trim(), items, proveedorId: proveedorId ? Number(proveedorId) : null };
     try {
       if (id) { data.id = Number(id); await DB.listas.put(data); showToast('Lista actualizada'); }
@@ -413,6 +419,9 @@
       proveedores.forEach(p => { provMap[p.id] = p.nombre; });
       document.getElementById('ver-lista-title').textContent = '🛒 ' + lista.nombre;
       document.getElementById('ver-lista-proveedor').textContent = lista.proveedorId && provMap[lista.proveedorId] ? '🏪 ' + provMap[lista.proveedorId] : '';
+      if (lista.items) {
+        lista.items.sort((a, b) => (a.productoNombre || '').localeCompare(b.productoNombre || '', 'es', { sensitivity: 'base' }));
+      }
       const container = document.getElementById('ver-lista-items');
       container.innerHTML = (lista.items || []).map((item, idx) => `
         <div class="check-item ${item.checked ? 'checked' : ''}" data-idx="${idx}">
@@ -466,7 +475,7 @@
     try {
       let pedidos = await DB.pedidos.getAll();
       if (pedidos.length === 0) { list.innerHTML = '<div class="empty-state">No hay pedidos aún.</div>'; return; }
-      pedidos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+      pedidos.sort((a, b) => (a.proveedorNombre || '').localeCompare(b.proveedorNombre || '', 'es', { sensitivity: 'base' }) || new Date(b.fecha) - new Date(a.fecha));
       list.innerHTML = pedidos.map(p => {
         const total = (p.items || []).length;
         const entregados = (p.items || []).filter(i => i.cantidadEntregada && i.cantidadEntregada >= i.cantidad).length;
@@ -502,6 +511,7 @@
       const [lista, proveedores] = await Promise.all([DB.listas.get(listaId), DB.proveedores.getAll()]);
       if (!lista) { showToast('Lista no encontrada'); return; }
       if (proveedores.length === 0) { showToast('Primero añade un proveedor'); return; }
+      proveedores.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' }));
       document.getElementById('modal-pedido-title').textContent = 'Nuevo Pedido: ' + lista.nombre;
       document.getElementById('pedido-id').value = '';
       document.getElementById('pedido-lista-id').value = listaId;
@@ -510,7 +520,8 @@
         proveedores.map(p => `<option value="${p.id}" ${p.id === lista.proveedorId ? 'selected' : ''}>${escapeHtml(p.nombre)}</option>`).join('');
       const container = document.getElementById('pedido-items-container');
       container.innerHTML = '';
-      for (const item of (lista.items || [])) {
+      const items = (lista.items || []).slice().sort((a, b) => (a.productoNombre || '').localeCompare(b.productoNombre || '', 'es', { sensitivity: 'base' }));
+      for (const item of items) {
         const precio = await getProductPrice(item.productoId);
         const row = document.createElement('div');
         row.className = 'pedido-item-row';
@@ -535,6 +546,7 @@
     try {
       const proveedores = await DB.proveedores.getAll();
       if (proveedores.length === 0) { showToast('Primero añade un proveedor'); return; }
+      proveedores.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' }));
       document.getElementById('modal-pedido-title').textContent = 'Nuevo Pedido Manual';
       document.getElementById('pedido-id').value = '';
       document.getElementById('pedido-lista-id').value = '';
@@ -620,6 +632,7 @@
       }
     }
     if (items.length === 0) { showToast('Añade al menos un producto'); return; }
+    items.sort((a, b) => (a.productoNombre || '').localeCompare(b.productoNombre || '', 'es', { sensitivity: 'base' }));
     const data = { proveedorId, proveedorNombre, listaId: listaId ? Number(listaId) : null, items, estado: 'pendiente' };
     try {
       if (id) { data.id = Number(id); await DB.pedidos.put(data); showToast('Pedido actualizado'); }
@@ -639,11 +652,13 @@
       document.getElementById('pedido-lista-id').value = p.listaId || '';
       const selProv = document.getElementById('pedido-proveedor');
       const proveedores = await DB.proveedores.getAll();
+      proveedores.sort((a, b) => (a.nombre || '').localeCompare(b.nombre || '', 'es', { sensitivity: 'base' }));
       selProv.innerHTML = '<option value="">Seleccionar proveedor...</option>' +
         proveedores.map(pr => `<option value="${pr.id}" ${pr.id === p.proveedorId ? 'selected' : ''}>${escapeHtml(pr.nombre)}</option>`).join('');
       const container = document.getElementById('pedido-items-container');
       container.innerHTML = '';
-      for (const item of (p.items || [])) {
+      const items = (p.items || []).slice().sort((a, b) => (a.productoNombre || '').localeCompare(b.productoNombre || '', 'es', { sensitivity: 'base' }));
+      for (const item of items) {
         const row = document.createElement('div');
         row.className = 'pedido-item-row';
         row.innerHTML = `
