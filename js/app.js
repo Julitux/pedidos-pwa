@@ -448,6 +448,20 @@
     } catch (e) { showToast('Error al cargar lista'); }
   }
 
+  document.getElementById('btn-check-all').addEventListener('click', async () => {
+    const listaId = Number(document.getElementById('ver-lista-body').dataset.listaId);
+    if (!listaId) return;
+    try {
+      const lista = await DB.listas.get(listaId);
+      if (!lista) return;
+      (lista.items || []).forEach(item => { item.checked = true; });
+      await DB.listas.put(lista);
+      showToast('Todos marcados como comprados');
+      verLista(listaId);
+      renderListas();
+    } catch (e) { showToast('Error'); }
+  });
+
   document.getElementById('btn-uncheck-all').addEventListener('click', async () => {
     const listaId = Number(document.getElementById('ver-lista-body').dataset.listaId);
     if (!listaId) return;
