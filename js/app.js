@@ -419,33 +419,60 @@
       proveedores.forEach(p => { provMap[p.id] = p.nombre; });
       document.getElementById('ver-lista-title').textContent = '🛒 ' + lista.nombre;
       document.getElementById('ver-lista-proveedor').textContent = lista.proveedorId && provMap[lista.proveedorId] ? '🏪 ' + provMap[lista.proveedorId] : '';
+      
       if (lista.items) {
         lista.items.sort((a, b) => (a.productoNombre || '').localeCompare(b.productoNombre || '', 'es', { sensitivity: 'base' }));
       }
-      const container = document.getElementById('ver-lista-items');
-      container.innerHTML = (lista.items || []).map((item, idx) => `
-        <div class="check-item ${item.checked ? 'checked' : ''}" data-idx="${idx}">
-          <div class="check-item-checkbox ${item.checked ? 'checked' : ''}">${item.checked ? '✅' : '⬜'}</div>
-          <div class="check-item-info">
-            <div class="check-item-name">${escapeHtml(item.productoNombre)}</div>
-            <div class="check-item-qty">${item.cantidad} ${item.unidad || 'ud'}</div>
-          </div>
-        </div>
-      `).join('');
-      container.querySelectorAll('.check-item').forEach(el => {
-        el.addEventListener('click', async () => {
-          const idx = Number(el.dataset.idx);
-          lista.items[idx].checked = !lista.items[idx].checked;
-          await DB.listas.put(lista);
-          el.classList.toggle('checked');
-          el.querySelector('.check-item-checkbox').classList.toggle('checked');
-          el.querySelector('.check-item-checkbox').textContent = lista.items[idx].checked ? '✅' : '⬜';
-          renderListas();
+
+      // Fetch prices for all items
+      for (const item of (lista.items || [])) {
+        if (item.precioUnitario === undefined) {
+          item.precioUnitario = await getProductPrice(item.productoId);
+        }
+      }
+
+      function updateVerListaUI() {
+        const container = document.getElementById('ver-lista-items');
+        let totalPendiente = 0;
+        
+        container.innerHTML = (lista.items || []).map((item, idx) => {
+          const itemTotal = (item.precioUnitario || 0) * (item.cantidad || 0);
+          if (!item.checked) totalPendiente += itemTotal;
+          
+          return `
+            <div class="check-item ${item.checked ? 'checked' : ''}" data-idx="${idx}">
+              <div class="check-item-checkbox ${item.checked ? 'checked' : ''}">${item.checked ? '✅' : '⬜'}</div>
+              <div class="check-item-info">
+                <div style="display:flex;justify-content:space-between">
+                  <div class="check-item-name">${escapeHtml(item.productoNombre)}</div>
+                  <div class="check-item-price" style="font-weight:600;color:var(--blue)">${formatPrice(itemTotal)}</div>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-secondary)">
+                  <div class="check-item-qty">${item.cantidad} ${item.unidad || 'ud'}</div>
+                  <div class="check-item-unit-price">${formatPrice(item.precioUnitario)}/ud</div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        document.getElementById('ver-lista-total').textContent = formatPrice(totalPendiente);
+
+        container.querySelectorAll('.check-item').forEach(el => {
+          el.onclick = async () => {
+            const idx = Number(el.dataset.idx);
+            lista.items[idx].checked = !lista.items[idx].checked;
+            await DB.listas.put(lista);
+            updateVerListaUI();
+            renderListas();
+          };
         });
-      });
+      }
+
+      updateVerListaUI();
       document.getElementById('ver-lista-body').dataset.listaId = id;
       document.getElementById('modal-ver-lista').classList.add('open');
-    } catch (e) { showToast('Error al cargar lista'); }
+    } catch (e) { console.error(e); showToast('Error al cargar lista'); }
   }
 
   document.getElementById('btn-check-all').addEventListener('click', async () => {
