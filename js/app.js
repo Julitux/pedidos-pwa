@@ -447,8 +447,13 @@
                   <div class="check-item-name">${escapeHtml(item.productoNombre)}</div>
                   <div class="check-item-price" style="font-weight:600;color:var(--blue)">${formatPrice(itemTotal)}</div>
                 </div>
-                <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-secondary)">
-                  <div class="check-item-qty">${item.cantidad} ${item.unidad || 'ud'}</div>
+                <div style="display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--text-secondary)">
+                  <div class="check-item-qty" style="display:flex;align-items:center;gap:4px">
+                    <button class="btn-qty-minus" data-idx="${idx}" style="border:1px solid var(--gray-300);background:var(--surface);border-radius:4px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text)">-</button>
+                    <input type="number" class="input-qty" data-idx="${idx}" value="${item.cantidad}" min="0.1" step="0.1" style="width:50px;text-align:center;padding:2px;font-size:12px;height:24px">
+                    <button class="btn-qty-plus" data-idx="${idx}" style="border:1px solid var(--gray-300);background:var(--surface);border-radius:4px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text)">+</button>
+                    <span>${item.unidad || 'ud'}</span>
+                  </div>
                   <div class="check-item-unit-price">${formatPrice(item.precioUnitario)}/ud</div>
                 </div>
               </div>
@@ -458,13 +463,49 @@
 
         document.getElementById('ver-lista-total').textContent = formatPrice(totalPendiente);
 
-        container.querySelectorAll('.check-item').forEach(el => {
-          el.onclick = async () => {
-            const idx = Number(el.dataset.idx);
+        container.querySelectorAll('.check-item-checkbox').forEach(el => {
+          el.onclick = async (e) => {
+            e.stopPropagation();
+            const idx = Number(el.closest('.check-item').dataset.idx);
             lista.items[idx].checked = !lista.items[idx].checked;
             await DB.listas.put(lista);
             updateVerListaUI();
             renderListas();
+          };
+        });
+
+        container.querySelectorAll('.btn-qty-minus').forEach(btn => {
+          btn.onclick = async (e) => {
+            e.stopPropagation();
+            const idx = Number(btn.dataset.idx);
+            if (lista.items[idx].cantidad > 0.1) {
+              lista.items[idx].cantidad = Math.max(0.1, Number((lista.items[idx].cantidad - 1).toFixed(1)));
+              await DB.listas.put(lista);
+              updateVerListaUI();
+            }
+          };
+        });
+
+        container.querySelectorAll('.btn-qty-plus').forEach(btn => {
+          btn.onclick = async (e) => {
+            e.stopPropagation();
+            const idx = Number(btn.dataset.idx);
+            lista.items[idx].cantidad = Number((lista.items[idx].cantidad + 1).toFixed(1));
+            await DB.listas.put(lista);
+            updateVerListaUI();
+          };
+        });
+
+        container.querySelectorAll('.input-qty').forEach(input => {
+          input.onclick = (e) => e.stopPropagation();
+          input.onchange = async () => {
+            const idx = Number(input.dataset.idx);
+            const newVal = parseFloat(input.value);
+            if (newVal > 0) {
+              lista.items[idx].cantidad = newVal;
+              await DB.listas.put(lista);
+              updateVerListaUI();
+            }
           };
         });
       }
