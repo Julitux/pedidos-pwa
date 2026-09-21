@@ -1,4 +1,4 @@
-const CACHE = 'pedidos-v2';
+const CACHE = 'pedidos-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -6,8 +6,7 @@ const ASSETS = [
   './icon.svg',
   './css/style.css',
   './js/db.js',
-  './js/app.js',
-  './js/html5-qrcode.min.js'
+  './js/app.js'
 ];
 
 self.addEventListener('install', e => {
